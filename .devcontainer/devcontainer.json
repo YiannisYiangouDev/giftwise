@@ -1,0 +1,19 @@
+{
+  "name": "GiftWise Dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
+  },
+  "postCreateCommand": "cd frontend && npm install && cd ../scraper && pip install -r requirements.txt",
+  "forwardPorts": [3000, 8000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-python.python"
+      ]
+    }
+  }
+}
