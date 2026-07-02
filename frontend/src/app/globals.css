@@ -3,13 +3,64 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 249, 250, 251;
+  --foreground: 0, 0, 0;
+  --background: 249, 250, 251;
+  --brand: 168, 85, 247;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-rgb: 3, 7, 18;
+.dark {
+  --foreground: 255, 255, 255;
+  --background: 3, 7, 18;
+}
+
+@layer base {
+  * {
+    @apply border-gray-200 dark:border-gray-800;
   }
+
+  body {
+    @apply bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100;
+  }
+
+  h1 { @apply text-3xl font-bold tracking-tight; }
+  h2 { @apply text-2xl font-semibold tracking-tight; }
+  h3 { @apply text-xl font-semibold; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm
+           hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+           px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 shadow-sm
+           hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+  }
+
+  .card {
+    @apply rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm;
+  }
+
+  .input {
+    @apply block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+           px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-green  { @apply badge bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400; }
+  .badge-yellow { @apply badge bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400; }
+  .badge-blue   { @apply badge bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400; }
+  .badge-purple { @apply badge bg-brand-100 text-brand-800 dark:bg-brand-900/30 dark:text-brand-400; }
+  .badge-gray   { @apply badge bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400; }
 }
