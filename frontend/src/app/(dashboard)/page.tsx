@@ -1,74 +1,68 @@
 import { createClient } from '@/lib/supabase/server'
-import { Gift, Users, Bell, TrendingDown } from 'lucide-react'
-import Link from 'next/link'
+import { Suspense } from 'react'
+import DashboardStats from '@/components/dashboard/DashboardStats'
+import UpcomingOccasions from '@/components/dashboard/UpcomingOccasions'
+import PriceAlerts from '@/components/dashboard/PriceAlerts'
+import RecentActivity from '@/components/dashboard/RecentActivity'
+import StatsSkeleton from '@/components/dashboard/StatsSkeleton'
+
+export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
-  const { data: recipients } = await supabase
-    .from('recipients')
-    .select('id, name, birthday, relationship')
-    .order('birthday')
-    .limit(5)
-
-  const { count: wishlistCount } = await supabase
-    .from('wishlists')
-    .select('id', { count: 'exact', head: true })
-
-  const { count: priceDrops } = await supabase
-    .from('wishlist_items')
-    .select('id', { count: 'exact', head: true })
-    .filter('current_best_price', 'lte', 'target_price')
-    .not('target_price', 'is', null)
-
-  const stats = [
-    { label: 'Recipients', value: recipients?.length ?? 0, icon: Users, href: '/recipients', color: 'bg-blue-500' },
-    { label: 'Wishlists', value: wishlistCount ?? 0, icon: Gift, href: '/wishlists', color: 'bg-brand-500' },
-    { label: 'Price Drops', value: priceDrops ?? 0, icon: TrendingDown, href: '/tracker', color: 'bg-green-500' },
-    { label: 'Alerts', value: 0, icon: Bell, href: '/settings', color: 'bg-orange-500' },
-  ]
+  const name = user?.email?.split('@')[0] ?? 'there'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-500">Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Good {getGreeting()}, {name} 👋
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          Here's what's happening with your gifts today.
+        </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(s => (
-          <Link key={s.label} href={s.href}
-            className="bg-white dark:bg-gray-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-md transition">
-            <div className={`w-10 h-10 ${s.color} rounded-lg flex items-center justify-center mb-3`}>
-              <s.icon size={20} className="text-white" />
-            </div>
-            <p className="text-2xl font-bold">{s.value}</p>
-            <p className="text-sm text-gray-500">{s.label}</p>
-          </Link>
+      {/* Stats row */}
+      <Suspense fallback={<StatsSkeleton />}>
+        <DashboardStats />
+      </Suspense>
+
+      {/* Two-column grid on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Suspense fallback={<CardSkeleton title="Upcoming Occasions" />}>
+          <UpcomingOccasions />
+        </Suspense>
+        <Suspense fallback={<CardSkeleton title="Price Alerts" />}>
+          <PriceAlerts />
+        </Suspense>
+      </div>
+
+      {/* Activity feed */}
+      <Suspense fallback={<CardSkeleton title="Recent Activity" />}>
+        <RecentActivity />
+      </Suspense>
+    </div>
+  )
+}
+
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'morning'
+  if (h < 18) return 'afternoon'
+  return 'evening'
+}
+
+function CardSkeleton({ title }: { title: string }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
+      <div className="h-5 w-36 bg-gray-200 dark:bg-gray-800 rounded animate-pulse mb-4" />
+      <div className="space-y-3">
+        {[1,2,3].map(i => (
+          <div key={i} className="h-12 bg-gray-100 dark:bg-gray-800/60 rounded-lg animate-pulse" />
         ))}
-      </div>
-
-      {/* Upcoming occasions */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-        <h2 className="font-semibold text-lg mb-4">Upcoming Occasions</h2>
-        {recipients && recipients.length > 0 ? (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-            {recipients.map(r => (
-              <li key={r.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{r.name}</p>
-                  <p className="text-sm text-gray-500">{r.relationship} {r.birthday ? `· ${r.birthday}` : ''}</p>
-                </div>
-                <Link href={`/recipients/${r.id}`}
-                  className="text-sm text-brand-500 hover:text-brand-600 font-medium">View →</Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-400 text-sm">No recipients yet. <Link href="/recipients" className="text-brand-500">Add one →</Link></p>
-        )}
       </div>
     </div>
   )
