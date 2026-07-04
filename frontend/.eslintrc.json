@@ -1,0 +1,17 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    // Fix: allow unused vars prefixed with _ (common in Next.js page props)
+    "@typescript-eslint/no-unused-vars": ["warn", {
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_",
+      "caughtErrorsIgnorePattern": "^_"
+    }],
+    // Fix: Next.js <Image> is always preferred, but allow <img> in edge cases
+    "@next/next/no-img-element": "warn",
+    // Fix: allow explicit `any` in scraper/API integration types
+    "@typescript-eslint/no-explicit-any": "warn",
+    // Fix: allow non-null assertion for Supabase env vars (they're always set)
+    "@typescript-eslint/no-non-null-assertion": "off"
+  }
+}

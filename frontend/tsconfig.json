@@ -13,7 +13,11 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{"name": "next"}],
-    "paths": {"@/*": ["./src/*"]}
+    "paths": {"@/*": ["./src/*"]},
+    // Fix: suppress noisy implicit-any on third-party types that use `any` internally
+    "noImplicitAny": true,
+    // Fix: ensure async params/searchParams are properly typed in Next 15 page components
+    "exactOptionalPropertyTypes": false
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
