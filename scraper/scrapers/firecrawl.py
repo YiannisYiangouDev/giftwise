@@ -1,41 +1,48 @@
-"""Universal scraper using Firecrawl for JS-rendered pages."""
+"""Firecrawl.dev extract scraper — used for JS-heavy sites (MediaMarkt, Public, Plaisio etc)."""
 import os
 import httpx
 
+EXTRACT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "product_name": {"type": "string"},
+        "price": {"type": "number"},
+        "image_url": {"type": "string"},
+        "in_stock": {"type": "boolean"},
+    },
+    "required": ["product_name", "price"],
+}
+
 class FirecrawlScraper:
-    API_URL = "https://api.firecrawl.dev/v1/scrape"
+    API_BASE = "https://api.firecrawl.dev/v1"
 
     async def scrape(self, url: str) -> dict | None:
+        api_key = os.environ.get("FIRECRAWL_API_KEY")
+        if not api_key:
+            raise EnvironmentError("FIRECRAWL_API_KEY is not set")
+
+        from urllib.parse import urlparse
+        store_name = urlparse(url).netloc.replace('www.', '')
+
         async with httpx.AsyncClient(timeout=60) as client:
             res = await client.post(
-                self.API_URL,
-                headers={
-                    "Authorization": f"Bearer {os.environ['FIRECRAWL_API_KEY']}",
-                    "Content-Type": "application/json"
-                },
+                f"{self.API_BASE}/extract",
+                headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "url": url,
-                    "formats": ["extract"],
-                    "extract": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "price": {"type": "number", "description": "Current product price in EUR"},
-                                "store_name": {"type": "string", "description": "Store name"},
-                                "in_stock": {"type": "boolean", "description": "Is product in stock?"}
-                            }
-                        }
-                    }
-                }
+                    "urls": [url],
+                    "prompt": "Extract the product name, current price in EUR (as a number), main product image URL, and whether it is in stock.",
+                    "schema": EXTRACT_SCHEMA,
+                },
             )
-            if res.status_code == 200:
-                data = res.json()
-                extracted = data.get("data", {}).get("extract", {})
-                if extracted.get("price"):
-                    return {
-                        "price": extracted["price"],
-                        "store_name": extracted.get("store_name", "Unknown"),
-                        "store_url": url,
-                        "in_stock": extracted.get("in_stock", True)
-                    }
-        return None
+            if res.status_code != 200:
+                return None
+
+            data = res.json().get('data', [{}])[0]
+            return {
+                'product_name': data.get('product_name'),
+                'image_url': data.get('image_url'),
+                'price': data.get('price'),
+                'store_name': store_name,
+                'store_url': url,
+                'in_stock': data.get('in_stock', True),
+            }
