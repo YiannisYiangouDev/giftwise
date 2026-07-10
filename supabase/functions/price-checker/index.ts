@@ -1,100 +1,113 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { serve } from 'https://deno.land/x/sift@0.6.0/mod.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-)
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
+const FROM_EMAIL = 'GiftWise <alerts@giftwise.app>'
 
-serve(async () => {
-  // Fetch all tracked items that need price checking
-  const { data: items, error } = await supabase
-    .from('wishlist_items')
-    .select('id, product_url, product_name, target_price, current_best_price')
-    .neq('status', 'purchased')
-    .neq('status', 'received')
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
-  }
-
-  const results = []
-
-  for (const item of (items ?? [])) {
-    try {
-      // Use Firecrawl to scrape current price
-      const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('FIRECRAWL_API_KEY')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          url: item.product_url,
-          formats: ['extract'],
-          extract: {
-            schema: {
-              type: 'object',
-              properties: {
-                price: { type: 'number', description: 'Current product price in EUR' },
-                store_name: { type: 'string', description: 'Store/retailer name' },
-                in_stock: { type: 'boolean', description: 'Whether product is in stock' }
-              }
-            }
-          }
-        })
-      })
-
-      const scrapeData = await scrapeRes.json()
-      const extracted = scrapeData?.data?.extract
-
-      if (extracted?.price) {
-        // Insert price history snapshot
-        await supabase.from('price_history').insert({
-          item_id: item.id,
-          store_name: extracted.store_name ?? 'Unknown',
-          store_url: item.product_url,
-          price: extracted.price,
-          in_stock: extracted.in_stock ?? true
-        })
-
-        // Update current best price
-        const newBest = item.current_best_price
-          ? Math.min(item.current_best_price, extracted.price)
-          : extracted.price
-
-        await supabase.from('wishlist_items')
-          .update({ current_best_price: newBest })
-          .eq('id', item.id)
-
-        // Trigger notification if price dropped below target
-        if (item.target_price && extracted.price <= item.target_price) {
-          const { data: wishlistData } = await supabase
-            .from('wishlist_items')
-            .select('wishlist_id, wishlists(recipient_id, recipients(user_id))')
-            .eq('id', item.id)
-            .single()
-
-          const userId = (wishlistData?.wishlists as any)?.recipients?.user_id
-          if (userId) {
-            await supabase.from('notifications').insert({
-              user_id: userId,
-              type: 'price_drop',
-              title: `Price drop: ${item.product_name}`,
-              message: `Now \u20ac${extracted.price} (target: \u20ac${item.target_price})`,
-              item_id: item.id
-            })
-          }
-        }
-
-        results.push({ id: item.id, price: extracted.price, success: true })
-      }
-    } catch (err) {
-      results.push({ id: item.id, error: String(err), success: false })
-    }
-  }
-
-  return new Response(JSON.stringify({ checked: results.length, results }), {
-    headers: { 'Content-Type': 'application/json' }
+async function sendPriceDropEmail({
+  to, productName, oldPrice, newPrice, storeUrl, imageUrl, targetPrice
+}: {
+  to: string; productName: string; oldPrice: number; newPrice: number
+  storeUrl: string; imageUrl?: string; targetPrice: number
+}) {
+  const pctOff = Math.round(((oldPrice - newPrice) / oldPrice) * 100)
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `📉 Price drop! ${productName} is now €${newPrice}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+          <h2 style="color:#f97316">🎁 Price Drop Alert</h2>
+          ${imageUrl ? `<img src="${imageUrl}" width="200" style="border-radius:8px;margin-bottom:16px" />` : ''}
+          <h3 style="margin:0 0 8px">${productName}</h3>
+          <p style="font-size:28px;font-weight:bold;margin:0">€${newPrice}</p>
+          <p style="color:#9ca3af;margin:4px 0 16px">
+            <s>€${oldPrice}</s> &nbsp; ↓ ${pctOff}% off &nbsp;·&nbsp; Your target: €${targetPrice}
+          </p>
+          <a href="${storeUrl}" style="background:#f97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">View Product</a>
+          <hr style="margin:32px 0;border:none;border-top:1px solid #e5e7eb" />
+          <p style="font-size:12px;color:#9ca3af">You're receiving this because you set a target price on GiftWise. <a href="{{unsubscribe_url}}">Unsubscribe</a></p>
+        </div>
+      `,
+    }),
   })
+}
+
+serve(async (_req) => {
+  // Get all items with target_price and a product_url
+  const { data: items } = await supabase
+    .from('wishlist_items')
+    .select(`
+      id, product_name, product_url, image_url,
+      current_best_price, target_price,
+      wishlist:wishlists(user_id)
+    `)
+    .not('target_price', 'is', null)
+    .not('product_url', 'is', null)
+
+  if (!items?.length) return new Response('No items', { status: 200 })
+
+  let sent = 0
+  for (const item of items) {
+    const current = parseFloat(item.current_best_price)
+    const target = parseFloat(item.target_price)
+    if (!current || !target || current > target) continue
+
+    // Get previous alert to avoid duplicate emails
+    const { data: lastAlert } = await supabase
+      .from('price_alerts')
+      .select('new_price, triggered_at')
+      .eq('item_id', item.id)
+      .order('triggered_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (lastAlert && parseFloat(lastAlert.new_price) === current) continue // already alerted at this price
+
+    // @ts-ignore
+    const userId = item.wishlist?.user_id
+    if (!userId) continue
+
+    // Get user email
+    const { data: { user } } = await supabase.auth.admin.getUserById(userId)
+    if (!user?.email) continue
+
+    // Check user notification preferences
+    const { data: prefs } = await supabase
+      .from('user_settings')
+      .select('email_price_drops')
+      .eq('user_id', userId)
+      .single()
+
+    if (prefs?.email_price_drops === false) continue
+
+    const oldPrice = lastAlert ? parseFloat(lastAlert.new_price) : current + 1
+    await sendPriceDropEmail({
+      to: user.email,
+      productName: item.product_name,
+      oldPrice,
+      newPrice: current,
+      storeUrl: item.product_url,
+      imageUrl: item.image_url,
+      targetPrice: target,
+    })
+
+    // Insert price_alert row
+    await supabase.from('price_alerts').insert({
+      item_id: item.id,
+      old_price: oldPrice,
+      new_price: current,
+    })
+
+    sent++
+  }
+
+  return new Response(JSON.stringify({ sent }), { headers: { 'Content-Type': 'application/json' } })
 })
