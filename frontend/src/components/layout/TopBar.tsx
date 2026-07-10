@@ -1,8 +1,10 @@
 'use client'
-import { Bell, Moon, Sun } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { Suspense } from 'react'
+import AlertBadge from '@/components/AlertBadge'
 
 export default function TopBar() {
   const [dark, setDark] = useState(false)
@@ -24,9 +26,11 @@ export default function TopBar() {
       <button onClick={toggleDark} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
         {dark ? <Sun size={18} /> : <Moon size={18} />}
       </button>
-      <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 relative">
-        <Bell size={18} />
-      </button>
+      {/* AlertBadge is an async server component — wrap in Suspense so TopBar stays a client component */}
+      <Suspense fallback={<span className="w-8 h-8" />}>
+        {/* @ts-expect-error async server component in client tree */}
+        <AlertBadge />
+      </Suspense>
       <button onClick={signOut} className="text-sm text-gray-500 hover:text-red-500 transition px-2">
         Sign out
       </button>
