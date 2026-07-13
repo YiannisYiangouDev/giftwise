@@ -1,23 +1,35 @@
-name: Deploy
+name: Deploy to Azure
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 jobs:
   deploy-frontend:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: "--prod"
+      - name: Login to Azure
+        uses: azure/login@v2
+        with: { creds: '${{ secrets.AZURE_CREDENTIALS }}' }
+      - name: Build and push Docker image
+        run: |
+          az acr build --registry giftwiseregistry \
+            --image giftwise-frontend:${{ github.sha }} \
+            --image giftwise-frontend:latest \
+            -f Dockerfile .
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name giftwise-frontend \
+            --resource-group giftwise-rg \
+            --image giftwiseregistry.azurecr.io/giftwise-frontend:latest
 
   deploy-edge-functions:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,5 +37,6 @@ jobs:
         run: |
           npm install -g supabase
           supabase functions deploy price-checker --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          supabase functions deploy birthday-reminder --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
