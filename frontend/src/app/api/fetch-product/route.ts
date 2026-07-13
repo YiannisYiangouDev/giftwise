@@ -16,10 +16,9 @@ export async function GET(request: Request) {
   // Step 1: Python cloudscraper (bypasses Cloudflare)
   try {
     const { spawnSync } = require('child_process')
-    const py = spawnSync('python3', [
-      '/home/coder/projects/giftwise/frontend/scripts/skroutz_helper.py',
-      'fetch', url,
-    ], { timeout: 20000, encoding: 'utf8' })
+    const path = require('path')
+    const script = path.join(process.cwd(), 'scripts', 'skroutz_helper.py')
+    const py = spawnSync('python3', [script, 'fetch', url], { timeout: 20000, encoding: 'utf8' })
     const out = py.stdout?.trim() || ''
     if (out && !py.error) {
       const data = JSON.parse(out)

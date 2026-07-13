@@ -2,14 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Users, Gift, TrendingDown, Shield } from 'lucide-react'
 
-// Admin emails — set in .env.local as comma-separated list
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase())
-
 export default async function AdminPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/')
 
-  if (!user || !ADMIN_EMAILS.includes(user.email?.toLowerCase() || '')) {
+  // Check admin role from admins table (falls back to env var for bootstrap)
+  const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', user.id).single()
+  const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase())
+  if (!adminRow && !envAdmins.includes(user.email?.toLowerCase() || '')) {
     redirect('/')
   }
 
