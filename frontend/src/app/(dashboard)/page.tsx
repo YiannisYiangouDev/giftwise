@@ -18,23 +18,22 @@ export default async function DashboardPage() {
     .from('wishlists')
     .select('id', { count: 'exact', head: true })
 
-  const { count: priceDrops } = await supabase
-    .from('wishlist_items')
-    .select('id', { count: 'exact', head: true })
-    .filter('current_best_price', 'lte', 'target_price')
-    .not('target_price', 'is', null)
+  // Warm greeting: use user metadata or first recipient name
+  const userName = (user?.user_metadata as any)?.full_name || recipients?.[0]?.name?.split(' ')[0]
+  const greeting = userName ? `Hi ${userName}!` : user?.email ? `Welcome, ${user.email.split('@')[0]}` : 'Welcome!'
 
-  const firstName = recipients?.[0]?.name
-  const greeting = firstName ? `Hi ${firstName.split(' ')[0]}!` : user?.email ? `Welcome, ${user.email.split('@')[0]}` : 'Welcome!'
+  // Parallel queries for better performance
+  const [priceDropsRes, contribRes] = await Promise.all([
+    supabase.from('wishlist_items').select('id', { count: 'exact', head: true })
+      .filter('current_best_price', 'lte', 'target_price').not('target_price', 'is', null),
+    supabase.from('contributions')
+      .select('id, amount, message, created_at, wishlist_items!inner(product_name, wishlists!inner(recipients!inner(name)))')
+      .eq('user_id', user!.id).order('created_at', { ascending: false }).limit(5),
+  ])
 
-  const { data: contributions } = await supabase
-    .from('contributions')
-    .select('id, amount, message, created_at, wishlist_items!inner(product_name, wishlists!inner(recipients!inner(name)))')
-    .eq('user_id', user!.id)
-    .order('created_at', { ascending: false })
-    .limit(5)
-
-  const totalContributed = (contributions ?? []).reduce((s: number, c: any) => s + c.amount, 0)
+  const priceDrops = priceDropsRes.count ?? 0
+  const contributions = contribRes.data ?? []
+  const totalContributed = contributions.reduce((s: number, c: any) => s + c.amount, 0)
 
   const stats = [
     { label: 'Recipients', value: recipients?.length ?? 0, icon: Users, href: '/recipients', color: 'bg-blue-500' },

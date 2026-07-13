@@ -1,3 +1,4 @@
+import { getAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Users, Gift, TrendingDown, Shield } from 'lucide-react'
@@ -7,22 +8,20 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/')
 
-  // Check admin role from admins table (falls back to env var for bootstrap)
+  // Check admin role from admins table (env var is fallback bootstrap only)
   const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', user.id).single()
   const envAdmins = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase())
-  if (!adminRow && !envAdmins.includes(user.email?.toLowerCase() || '')) {
-    redirect('/')
-  }
+  if (!adminRow && !envAdmins.includes(user.email?.toLowerCase() || '')) redirect('/')
 
-  // Fetch stats using service role for full visibility
-  const { data: recipients } = await supabase.from('recipients').select('id, name, user_id').order('name')
-  const { data: wishlists } = await supabase.from('wishlists').select('id, title, recipient_id')
-  const { data: items } = await supabase.from('wishlist_items').select('id, product_name, status')
-  const { count: totalUsers } = await supabase.from('recipients').select('user_id', { count: 'exact', head: true })
+  // Use service-role client for admin queries (bypasses RLS for overview)
+  const adminClient = getAdminClient()
+  const { data: recipients } = await adminClient.from('recipients').select('id, name, user_id').order('name')
+  const { data: wishlists } = await adminClient.from('wishlists').select('id, title, recipient_id')
+  const { data: items } = await adminClient.from('wishlist_items').select('id, product_name, status')
 
   // Group recipients by user
   const userMap = new Map<string, { count: number; names: string[] }>()
-  recipients?.forEach(r => {
+  ;(recipients as any[] | null)?.forEach((r: any) => {
     const entry = userMap.get(r.user_id) || { count: 0, names: [] }
     entry.count++
     entry.names.push(r.name)

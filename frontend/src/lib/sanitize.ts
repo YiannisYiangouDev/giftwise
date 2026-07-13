@@ -1,14 +1,15 @@
-/** Strip HTML tags from user input to prevent XSS. */
-export function sanitize(value: string): string {
-  return value
-    .replace(/<[^>]*>/g, '')           // strip HTML tags
-    .replace(/javascript\s*:/gi, '')    // strip javascript: URIs
-    .replace(/on\w+\s*=/gi, '')         // strip inline event handlers
-    .trim()
-    .slice(0, 500)                       // max length
+import sanitizeHtml from 'sanitize-html'
+
+const defaults: sanitizeHtml.IOptions = {
+  allowedTags: [],
+  allowedAttributes: {},
+  disallowedTagsMode: 'discard',
 }
 
-/** Sanitize optional string — returns null if empty after sanitization. */
+export function sanitize(value: string): string {
+  return sanitizeHtml(value, defaults).trim().slice(0, 500)
+}
+
 export function sanitizeOptional(value: string | null | undefined): string | null {
   if (!value) return null
   const s = sanitize(value)

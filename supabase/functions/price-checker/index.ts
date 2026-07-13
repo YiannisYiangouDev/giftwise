@@ -6,7 +6,14 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 )
 
-serve(async () => {
+serve(async (req) => {
+  // Validate Bearer token
+  const authHeader = req.headers.get('Authorization')
+  const expectedToken = Deno.env.get('CRON_SECRET')
+  if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+  }
+
   // Fetch all tracked items that need price checking
   const { data: items, error } = await supabase
     .from('wishlist_items')
