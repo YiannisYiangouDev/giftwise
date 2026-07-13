@@ -2,13 +2,15 @@
 import os
 import httpx
 
+USER_AGENT = "GiftWise/1.0 (gift-tracking price monitor; contact@giftwise.app)"
+
 class SkroutzScraper:
     ACTOR_ID = "studio-amba~skroutz-scraper"
     API_BASE = "https://api.apify.com/v2"
 
     async def scrape(self, url: str) -> dict | None:
         token = os.environ["APPIFY_API_TOKEN"]
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=60, headers={"User-Agent": USER_AGENT}) as client:
             # Start actor run
             run_res = await client.post(
                 f"{self.API_BASE}/acts/{self.ACTOR_ID}/runs",

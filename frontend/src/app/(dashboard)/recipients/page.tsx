@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Plus, User } from 'lucide-react'
+import type { RecipientRow } from '@/types/rows'
 
 export default async function RecipientsPage() {
   const supabase = await createClient()
@@ -8,6 +9,7 @@ export default async function RecipientsPage() {
     .from('recipients')
     .select('*')
     .order('name')
+    .returns<RecipientRow[]>()
 
   return (
     <div className="space-y-6">

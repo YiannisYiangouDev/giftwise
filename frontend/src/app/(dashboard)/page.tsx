@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { Gift, Users, Bell, TrendingDown } from 'lucide-react'
+import { Gift, Users, Bell, TrendingDown, Wallet } from 'lucide-react'
 import Link from 'next/link'
+import type { RecipientRow } from '@/types/rows'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -11,6 +12,7 @@ export default async function DashboardPage() {
     .select('id, name, birthday, relationship')
     .order('birthday')
     .limit(5)
+    .returns<Pick<RecipientRow, 'id' | 'name' | 'birthday' | 'relationship'>[]>()
 
   const { count: wishlistCount } = await supabase
     .from('wishlists')
@@ -21,6 +23,18 @@ export default async function DashboardPage() {
     .select('id', { count: 'exact', head: true })
     .filter('current_best_price', 'lte', 'target_price')
     .not('target_price', 'is', null)
+
+  const firstName = recipients?.[0]?.name
+  const greeting = firstName ? `Hi ${firstName.split(' ')[0]}!` : user?.email ? `Welcome, ${user.email.split('@')[0]}` : 'Welcome!'
+
+  const { data: contributions } = await supabase
+    .from('contributions')
+    .select('id, amount, message, created_at, wishlist_items!inner(product_name, wishlists!inner(recipients!inner(name)))')
+    .eq('user_id', user!.id)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  const totalContributed = (contributions ?? []).reduce((s: number, c: any) => s + c.amount, 0)
 
   const stats = [
     { label: 'Recipients', value: recipients?.length ?? 0, icon: Users, href: '/recipients', color: 'bg-blue-500' },
@@ -33,7 +47,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-500">Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!</p>
+        <p className="text-gray-500">{greeting}</p>
       </div>
 
       {/* Stats */}
@@ -70,6 +84,29 @@ export default async function DashboardPage() {
           <p className="text-gray-400 text-sm">No recipients yet. <Link href="/recipients" className="text-brand-500">Add one →</Link></p>
         )}
       </div>
+
+      {/* My Contributions */}
+      {contributions && contributions.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-lg flex items-center gap-2">
+              <Wallet size={18} className="text-brand-500" /> My Contributions
+            </h2>
+            <span className="text-sm font-medium text-brand-500">€{totalContributed.toFixed(2)} total</span>
+          </div>
+          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+            {(contributions as any[]).map((c: any) => (
+              <li key={c.id} className="py-2 flex items-center justify-between text-sm">
+                <div>
+                  <span className="font-medium">€{c.amount.toFixed(2)}</span>
+                  <span className="text-gray-500 ml-2">for {c.wishlist_items?.product_name}</span>
+                </div>
+                <span className="text-xs text-gray-400 truncate ml-2 max-w-[120px]">{c.wishlist_items?.wishlists?.recipients?.name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,85 +1,89 @@
 # 🎁 GiftWise
 
-> Advanced gift guide app with wishlist management and live price tracking across Cyprus & Greece.
+> Family gift tracker with wishlist management, group gifting, Secret Santa draws, and live price tracking across Cyprus & Greece.
 
 ## Features
-- 👥 **Recipient management** — track people, birthdays, budgets
-- 🎀 **Wishlists** — multiple wishlists per person, shareable links, claim system
-- 💰 **Price tracker** — monitors prices across Skroutz.cy, Skroutz.gr, and top CY stores
-- 🔔 **Alerts** — email and browser push when price drops below your target
-- 🎄 **Occasions** — birthday, Christmas, name day templates
+- 👥 **Recipient management** — track people, birthdays, relationships, budgets
+- 🎀 **Wishlists** — multiple wishlists per person, shareable public links, claim/purchase flow
+- 💰 **Group Gifts** — pool money with family members on wishlist items
+- 🎅 **Secret Santa** — create groups, draw names (Fisher-Yates, no self-assign), reveal assignments
+- 🔍 **Product Search** — search Skroutz.cy by name, see results with images
+- 📊 **Price tracker** — monitors 16 stores across Cyprus/Greece with price history charts
+- 🔓 **Cloudflare bypass** — scrapes Cloudflare-protected stores (Skroutz.cy, Public, IKEA, etc.)
+- 🔔 **Alerts** — in-app notifications + email via Resend for price drops & birthdays
+- 📱 **Mobile-ready** — hamburger sidebar, responsive design, dark mode
+- 🛡 **Family-only** — private household tool, no public signups
 
 ## Tech Stack
-- **Frontend**: Next.js 16 + Tailwind CSS + Recharts
-- **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
-- **Scraping**: Firecrawl + Apify + Python/Playwright
-- **Deployment**: Vercel + Supabase
+- **Frontend**: Next.js 15.5 (App Router) + React 19 + Tailwind CSS 3.4
+- **State**: React Query v5 + server components
+- **Charts**: Recharts 2.15 + custom CSS bar charts
+- **Database & Auth**: Supabase (PostgreSQL 17, Ireland eu-west-2) — email/password, RLS, Realtime
+- **Scraping**: Python 3.12 + cloudscraper (Cloudflare bypass) — 6 engine types, robots.txt compliance
+- **Search**: Skroutz.cy scraping via Python subprocess bridge
+- **Edge Functions**: Deno/TypeScript (price-checker, birthday-reminder)
+- **Cron**: Supabase pg_cron + pg_net (daily scheduled jobs)
+- **Email**: Resend (transactional email for price drop alerts)
+- **Deployment**: Vercel (frontend) + Supabase (backend) + Cloudflare Pages option
 
 ## Project Structure
 ```
 giftwise/
-├── frontend/          # Next.js 16 app
-├── scraper/           # Python price scraper service
-├── supabase/          # DB migrations + Edge Functions
-└── docs/              # Planning, architecture docs
+├── frontend/              # Next.js 15.5 app
+│   ├── src/
+│   │   ├── app/           # 18+ routes (auth, dashboard, marketing, API, share)
+│   │   ├── components/    # 12 shared components
+│   │   ├── lib/           # Supabase clients, sanitization
+│   │   └── types/         # Database + row type definitions
+│   └── scripts/           # Python bridge for Cloudflare bypass
+├── scraper/               # Python price scraper (6 engines, 16 stores)
+├── supabase/              # DB migrations (5) + Edge Functions (2)
+└── docs/                  # Planning, architecture
 ```
 
-## Getting Started
-
-### Prerequisites
-- Node.js 20+
-- Python 3.12+
-- Supabase account
-- Vercel account (for deployment)
-
-### Local Setup
-```bash
-# 1. Clone
-git clone https://github.com/YiannisYiangouDev/giftwise.git
-cd giftwise
-
-# 2. Frontend
-cd frontend
-cp .env.example .env.local
-# Fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
-npm install
-npm run dev   # → localhost:3000
-
-# 3. Scraper
-cd ../scraper
-cp .env.example .env
-pip install -r requirements.txt
-python main.py
+## Routes
 ```
+/                          Dashboard — stats, upcoming occasions
+/login                     Auth — sign in / sign up (family-only)
+/recipients[/new, /[id], /[id]/edit]  CRUD — people you buy for
+/wishlists[/new, /[id], /[id]/edit]   CRUD — gift lists
+/secret-santa[/new, /[id]]            Groups + draw + reveal
+/tracker[/[id]]             Price tracker + per-item history chart
+/admin                     Admin panel (email-gated)
+/s/[token]                 Public shareable wishlist (no login)
+/settings                  Notification preferences, dark mode
+```
+
+## API Routes
+```
+/api/search?q=                  Skroutz.cy product search
+/api/fetch-product?url=         Extract product name + price + image from URL
+/api/account/export             GDPR: JSON export of all user data
+/api/account/delete             GDPR: cascade delete account
+```
+
+## Database
+9 tables with Row Level Security: `recipients`, `wishlists`, `wishlist_items`, `price_history`, `tracked_stores`, `notifications`, `contributions`, `secret_santa_groups`, `secret_santa_participants`
 
 ## Environment Variables
 
 ### Frontend (`frontend/.env.local`)
 ```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+ADMIN_EMAILS=your-email@example.com
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 ### Scraper (`scraper/.env`)
 ```
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-APPIFY_API_TOKEN=your_apify_token
-FIRECRAWL_API_KEY=your_firecrawl_key
-RESEND_API_KEY=your_resend_key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-## GitHub Secrets (for CI/CD)
+### Edge Functions (set in Supabase Dashboard)
 ```
-VERCEL_TOKEN
-VERCEL_ORG_ID
-VERCEL_PROJECT_ID
-SUPABASE_PROJECT_REF
-SUPABASE_ACCESS_TOKEN
+RESEND_API_KEY=your-resend-key
+FIRECRAWL_API_KEY=your-firecrawl-key
 ```
-
-## Docs
-- [Planning](docs/PLANNING.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Contributing](CONTRIBUTING.md)

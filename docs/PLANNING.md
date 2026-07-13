@@ -32,6 +32,14 @@ and track prices across Cyprus and Greek e-commerce sites automatically.
 | Beauty Bar | beautybar.com.cy | Shopify | /products.json |
 | Bionic | bionic.com.cy | Custom | Custom parser |
 | Cablenet | cablenet.com.cy | WooCommerce | wp-json API |
+| Public Cyprus | public-cyprus.com.cy | Custom | Playwright |
+| Kotsovolos | kotsovolos.com.cy | Custom | Playwright |
+| Germanos | germanos.com.cy | Custom | Playwright |
+| Leroy Merlin | leroymerlin.com.cy | Custom | Playwright |
+| IKEA Cyprus | ikea.com.cy | Custom | Playwright |
+| Athienitis | athienitis.com.cy | Custom | Playwright |
+| Xenion Electronics | xenion.com.cy | Custom | Firecrawl |
+| Kyriakides Books | kyriakides.com.cy | Custom | Firecrawl |
 
 ## Development Phases
 | Phase | Duration | Deliverables |

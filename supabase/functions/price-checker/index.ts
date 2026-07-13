@@ -77,6 +77,11 @@ serve(async () => {
 
           const userId = (wishlistData?.wishlists as any)?.recipients?.user_id
           if (userId) {
+            // Get user email from auth
+            const { data: userData } = await supabase.auth.admin.getUserById(userId)
+            const userEmail = userData?.user?.email
+
+            // In-app notification
             await supabase.from('notifications').insert({
               user_id: userId,
               type: 'price_drop',
@@ -84,6 +89,29 @@ serve(async () => {
               message: `Now \u20ac${extracted.price} (target: \u20ac${item.target_price})`,
               item_id: item.id
             })
+
+            // Send email via Resend
+            if (userEmail && Deno.env.get('RESEND_API_KEY')) {
+              try {
+                await fetch('https://api.resend.com/emails', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    from: 'GiftWise <notifications@giftwise.app>',
+                    to: userEmail,
+                    subject: `🎁 Price Drop: ${item.product_name}`,
+                    html: `<h2>Price Drop Alert!</h2>
+                      <p><strong>${item.product_name}</strong> is now <strong>€${extracted.price}</strong>!</p>
+                      <p>Your target was €${item.target_price}. You're saving €${(item.target_price - extracted.price).toFixed(2)}!</p>
+                      <p><a href="${item.product_url}">View product →</a></p>
+                      <hr><p style="color:#888;font-size:12px">GiftWise price tracker. Unsubscribe in Settings.</p>`,
+                  }),
+                })
+              } catch { /* email failed silently */ }
+            }
           }
         }
 

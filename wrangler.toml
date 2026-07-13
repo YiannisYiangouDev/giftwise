@@ -1,0 +1,30 @@
+# Cloudflare Pages configuration for GiftWise
+# Deploy: npx wrangler pages deploy frontend/out --project-name giftwise
+# Or connect via GitHub in Cloudflare Dashboard → Pages
+
+name = "giftwise"
+compatibility_date = "2026-07-08"
+
+# Frontend build output (Next.js static export or Vercel)
+pages_build_output_dir = "frontend/out"
+
+[env.production]
+# Environment variables (also set in Cloudflare Dashboard)
+# NEXT_PUBLIC_SUPABASE_URL = "https://pnmsysqljdnprcwkerlf.supabase.co"
+# NEXT_PUBLIC_SUPABASE_ANON_KEY = "your-anon-key"
+# NEXT_PUBLIC_APP_URL = "https://giftwise.app"
+
+# Security headers
+[env.production.headers]
+  "/*" = [
+    "X-Frame-Options = DENY",
+    "X-Content-Type-Options = nosniff",
+    "Referrer-Policy = same-origin",
+    "Permissions-Policy = camera=(), microphone=(), geolocation=()",
+    "Strict-Transport-Security = max-age=31536000; includeSubDomains",
+  ]
+
+# Bot protection (Cloudflare's built-in)
+# Configured in Cloudflare Dashboard → Security → Bots:
+# - Bot Fight Mode: ON
+# - Under Attack Mode: OFF (only enable during attacks)
