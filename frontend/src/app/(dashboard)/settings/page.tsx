@@ -1,11 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Bell, Mail, Smartphone, Trash2, AlertTriangle, Calendar, Copy, Check, Globe } from 'lucide-react'
+import { Bell, Mail, Smartphone, Trash2, AlertTriangle, Calendar, Copy, Check, Globe, Key, Download, ShieldAlert } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/Toast'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import { listTokensAction, generateTokenAction, revokeTokenAction } from '@/app/actions/tokenActions'
 
 export default function SettingsPage() {
   const { t } = useLanguage()
@@ -17,6 +18,12 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [tokens, setTokens] = useState<{ id: string; name: string; last_used_at: string | null; created_at: string }[]>([])
+  const [newTokenName, setNewTokenName] = useState('')
+  const [showTokenModal, setShowTokenModal] = useState(false)
+  const [generatedToken, setGeneratedToken] = useState('')
+  const [generatingToken, setGeneratingToken] = useState(false)
+  const [copiedToken, setCopiedToken] = useState(false)
   
   const supabase = createClient()
   const router = useRouter()
@@ -24,7 +31,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id)
+      if (user) {
+        setUserId(user.id)
+        loadTokens()
+      }
     })
 
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -153,6 +163,53 @@ export default function SettingsPage() {
     setCopied(true)
     toast('Calendar link copied to clipboard!')
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function loadTokens() {
+    try {
+      const data = await listTokensAction()
+      setTokens(data)
+    } catch (err: any) {
+      toast(err.message || 'Failed to load API tokens', 'error')
+    }
+  }
+
+  async function handleGenerateToken(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newTokenName.trim() || generatingToken) return
+    setGeneratingToken(true)
+
+    try {
+      const res = await generateTokenAction(newTokenName)
+      setGeneratedToken(res.rawToken)
+      setNewTokenName('')
+      setShowTokenModal(true)
+      await loadTokens()
+      toast('API token generated!')
+    } catch (err: any) {
+      toast(err.message || 'Failed to generate token', 'error')
+    } finally {
+      setGeneratingToken(false)
+    }
+  }
+
+  async function handleRevokeToken(id: string) {
+    if (!confirm('Are you sure you want to revoke this API token? Any client using it will lose access.')) return
+    try {
+      await revokeTokenAction(id)
+      await loadTokens()
+      toast('API token revoked.')
+    } catch (err: any) {
+      toast(err.message || 'Failed to revoke token', 'error')
+    }
+  }
+
+  function copyNewToken() {
+    if (!generatedToken) return
+    navigator.clipboard.writeText(generatedToken)
+    setCopiedToken(true)
+    toast('Token copied to clipboard!')
+    setTimeout(() => setCopiedToken(false), 2000)
   }
 
   return (
@@ -317,6 +374,130 @@ export default function SettingsPage() {
           <p className="text-[11px] text-gray-400 italic">Generating feed URL...</p>
         )}
       </div>
+
+      {/* API & Extensions */}
+      <div className="card p-6 space-y-4">
+        <h2 className="font-semibold flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <Key size={16} className="text-brand-500" /> API & Browser Extension
+        </h2>
+        <p className="text-[11px] text-gray-400">
+          Generate secure Personal Access Tokens (PATs) to connect the GiftWise Quick Clip browser extension and add items from any website.
+        </p>
+
+        {/* Generate Token Form */}
+        <form onSubmit={handleGenerateToken} className="flex gap-2">
+          <input
+            type="text"
+            required
+            value={newTokenName}
+            onChange={e => setNewTokenName(e.target.value)}
+            placeholder="e.g. My Chrome Extension"
+            className="input !py-2 !text-xs flex-1"
+          />
+          <button
+            type="submit"
+            disabled={generatingToken || !newTokenName.trim()}
+            className="px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-40 text-white rounded-xl text-xs font-semibold flex items-center justify-center transition-all duration-300 shadow-lux-gold"
+          >
+            Generate PAT
+          </button>
+        </form>
+
+        {/* Tokens List */}
+        {tokens.length > 0 ? (
+          <div className="space-y-2 pt-2">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Active Tokens ({tokens.length})</p>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden bg-gray-50/30 dark:bg-gray-900/10">
+              {tokens.map(t => (
+                <div key={t.id} className="flex items-center justify-between p-3 text-xs">
+                  <div>
+                    <p className="font-semibold text-gray-800 dark:text-gray-200">{t.name}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      Created: {new Date(t.created_at).toLocaleDateString()}
+                      {t.last_used_at && ` · Last used: ${new Date(t.last_used_at).toLocaleDateString()}`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRevokeToken(t.id)}
+                    className="text-red-500 hover:text-red-600 font-semibold text-[11px] px-2 py-1 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-[11px] text-gray-400 italic pt-1">No active API tokens generated.</p>
+        )}
+
+        <div className="divider" />
+
+        {/* Download Section */}
+        <div className="p-4 bg-brand-500/5 dark:bg-brand-950/10 border border-brand-200/40 dark:border-brand-800/30 rounded-xl flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Quick Clip Chrome Extension</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Download and install to clip gifts with one click.</p>
+          </div>
+          <a
+            href="/api/extension/download"
+            className="px-4 py-2 border border-brand-500 hover:bg-brand-500/10 text-brand-500 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-300"
+          >
+            <Download size={13} /> Download ZIP
+          </a>
+        </div>
+
+        {/* Installation Instructions */}
+        <div className="p-3.5 bg-gray-50 dark:bg-gray-800/20 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] text-gray-500 space-y-1.5 leading-relaxed">
+          <p className="font-semibold text-gray-700 dark:text-gray-300">How to Install:</p>
+          <ol className="list-decimal pl-4 space-y-1">
+            <li>Download the extension ZIP file above and extract it.</li>
+            <li>Open Chrome/Edge and go to <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">chrome://extensions</code>.</li>
+            <li>Enable <strong>Developer mode</strong> (top-right toggle switch).</li>
+            <li>Click <strong>Load unpacked</strong> (top-left button) and select the extracted extension folder.</li>
+            <li>Open the extension popup on any store page, insert your PAT, and start clipping!</li>
+          </ol>
+        </div>
+      </div>
+
+      {/* Generated Token Modal Overlay */}
+      {showTokenModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="card max-w-md w-full p-6 space-y-4 animate-scale-up border border-brand-500/30">
+            <div className="flex items-center gap-2 text-brand-500">
+              <Key size={20} />
+              <h3 className="text-lg font-bold">Your Personal Access Token</h3>
+            </div>
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3 text-amber-600 dark:text-amber-400 text-xs">
+              <ShieldAlert size={18} className="flex-shrink-0" />
+              <p>Make sure to copy this token now. It will not be shown again for security reasons!</p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={generatedToken}
+                className="input !py-2.5 !text-xs flex-1 font-mono bg-black text-brand-400 select-all"
+              />
+              <button
+                onClick={copyNewToken}
+                className="px-4 bg-brand-500 hover:bg-brand-600 text-white rounded-xl flex items-center justify-center transition-all duration-300 shadow-lux-gold"
+              >
+                {copiedToken ? <Check size={15} /> : <Copy size={15} />}
+              </button>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => { setShowTokenModal(false); setGeneratedToken('') }}
+                className="btn-secondary !py-2 !px-4 !text-xs"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Account */}
       <div className="card p-6 space-y-4">

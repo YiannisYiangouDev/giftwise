@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GiftWise Quick Clip</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="gift-icon">🎁</span>
+        <span class="brand-name">GiftWise</span>
+      </div>
+      <div class="header-actions">
+        <button id="disconnect-btn" class="icon-btn" title="Disconnect" hidden>🔌</button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="app-main">
+      <!-- Setup View -->
+      <section id="setup-view" class="view">
+        <h2 class="view-title">Connect Extension</h2>
+        <p class="view-desc">Enter your self-hosted GiftWise credentials to start clipping items.</p>
+        
+        <form id="setup-form" class="form-grid">
+          <div class="field">
+            <label class="label" for="host-url">GiftWise Host URL</label>
+            <input class="input" type="url" id="host-url" placeholder="https://giftwise.shillopelloi.com" required>
+          </div>
+          <div class="field">
+            <label class="label" for="access-token">Personal Access Token</label>
+            <input class="input" type="password" id="access-token" placeholder="gw_pat_..." required>
+          </div>
+          <div id="setup-error" class="error-text" hidden></div>
+          <button type="submit" id="save-setup-btn" class="btn-primary">Connect Account</button>
+        </form>
+      </section>
+
+      <!-- Clip View -->
+      <section id="clip-view" class="view" hidden>
+        <form id="clip-form" class="form-grid">
+          <!-- Recipient Selection -->
+          <div class="field-row">
+            <div class="field">
+              <label class="label" for="recipient-select">Recipient</label>
+              <select class="select" id="recipient-select" required>
+                <option value="" disabled selected>Select Recipient</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="wishlist-select">Wishlist</label>
+              <select class="select" id="wishlist-select" required disabled>
+                <option value="" disabled selected>Select Wishlist</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Product Details -->
+          <div class="product-preview-card">
+            <div class="preview-img-container">
+              <img id="product-img" src="" alt="Product Image" hidden>
+              <div id="product-img-placeholder" class="img-placeholder">🛍️</div>
+            </div>
+            <div class="preview-details">
+              <input class="input-name" type="text" id="product-name" placeholder="Product Name" required>
+              <div class="price-input-container">
+                <span class="currency-symbol">€</span>
+                <input class="input-price" type="number" step="0.01" min="0" id="product-price" placeholder="0.00">
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="field">
+            <label class="label" for="product-notes">Notes</label>
+            <textarea class="textarea" id="product-notes" placeholder="Size, color, store details..." rows="2"></textarea>
+          </div>
+
+          <div id="clip-error" class="error-text" hidden></div>
+          <button type="submit" id="clip-btn" class="btn-primary">⚡ Clip to Wishlist</button>
+        </form>
+      </section>
+
+      <!-- Success View -->
+      <section id="success-view" class="view" hidden>
+        <div class="success-message">
+          <div class="success-icon">✨</div>
+          <h2 class="view-title">Item Clipped!</h2>
+          <p class="view-desc">Successfully added to <span id="success-wishlist-name" class="highlight">wishlist</span>.</p>
+          <div class="success-actions">
+            <a href="#" id="view-item-link" class="btn-secondary" target="_blank">View on GiftWise ➔</a>
+            <button id="clip-another-btn" class="btn-text">Clip Another Item</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
