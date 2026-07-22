@@ -7,10 +7,13 @@ const supabase = createClient(
 )
 
 serve(async (req) => {
-  // Validate Bearer token
+  // Validate Bearer token (allow either cron secret or service role key)
   const authHeader = req.headers.get('Authorization')
-  const expectedToken = Deno.env.get('CRON_SECRET')
-  if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  
+  const token = authHeader?.replace(/^Bearer\s+/i, '')
+  if (token !== cronSecret && token !== serviceKey) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   }
 
@@ -74,6 +77,61 @@ serve(async (req) => {
           .update({ current_best_price: newBest })
           .eq('id', item.id)
 
+        // ── Restock Alert: was out of stock, now back ──
+        if (extracted.in_stock === true) {
+          const { data: prevHistory } = await supabase
+            .from('price_history')
+            .select('in_stock')
+            .eq('item_id', item.id)
+            .order('checked_at', { ascending: false })
+            .limit(2)
+
+          const wasOutOfStock = prevHistory && prevHistory.length >= 2 && prevHistory[1]?.in_stock === false
+          if (wasOutOfStock) {
+            const { data: wishlistData } = await supabase
+              .from('wishlist_items')
+              .select('wishlist_id, wishlists(recipient_id, recipients(user_id))')
+              .eq('id', item.id)
+              .single()
+
+            const nested = wishlistData as unknown as { wishlists: { recipients: { user_id: string } } } | null
+            const userId = nested?.wishlists?.recipients?.user_id
+            if (userId) {
+              await supabase.from('notifications').insert({
+                user_id: userId,
+                type: 'restock',
+                title: `🔄 Back in stock: ${item.product_name}`,
+                message: `${item.product_name} is available again at €${extracted.price}`,
+                item_id: item.id
+              })
+
+              // Send restock email
+              const { data: userData } = await supabase.auth.admin.getUserById(userId)
+              const userEmail = userData?.user?.email
+              if (userEmail && Deno.env.get('RESEND_API_KEY')) {
+                try {
+                  await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      from: 'GiftWise <gwise@shillopelloi.com>',
+                      to: userEmail,
+                      subject: `🔄 Restock Alert: ${item.product_name}`,
+                      html: `<h2>Back in Stock!</h2>
+                        <p><strong>${item.product_name}</strong> is available again at <strong>€${extracted.price}</strong>!</p>
+                        <p><a href="${item.product_url}">Buy now →</a></p>
+                        <hr><p style="color:#888;font-size:12px">GiftWise restock alert. Unsubscribe in Settings.</p>`,
+                    }),
+                  })
+                } catch { /* email failed silently */ }
+              }
+            }
+          }
+        }
+
         // Trigger notification if price dropped below target
         if (item.target_price && extracted.price <= item.target_price) {
           const { data: wishlistData } = await supabase
@@ -82,7 +140,9 @@ serve(async (req) => {
             .eq('id', item.id)
             .single()
 
-          const userId = (wishlistData?.wishlists as any)?.recipients?.user_id
+          // Extract userId from nested join result
+          const nested = wishlistData as unknown as { wishlists: { recipients: { user_id: string } } } | null
+          const userId = nested?.wishlists?.recipients?.user_id
           if (userId) {
             // Get user email from auth
             const { data: userData } = await supabase.auth.admin.getUserById(userId)
@@ -107,7 +167,7 @@ serve(async (req) => {
                     'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
-                    from: 'GiftWise <notifications@giftwise.app>',
+                    from: 'GiftWise <gwise@shillopelloi.com>',
                     to: userEmail,
                     subject: `🎁 Price Drop: ${item.product_name}`,
                     html: `<h2>Price Drop Alert!</h2>

@@ -1,7 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ExternalLink, TrendingDown, ArrowLeft } from 'lucide-react'
+import PriceHistoryChart from '@/components/PriceHistoryChart'
+import type { PriceHistoryRow, WishlistItemWithWishlist } from '@/types/rows'
 
 export default async function TrackerItemPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -24,13 +27,6 @@ export default async function TrackerItemPage({ params }: { params: Promise<{ id
 
   const dropped = item.target_price && item.current_best_price && item.current_best_price <= item.target_price
 
-  // Prepare chart data
-  const chartData = (history ?? []).map(h => ({
-    date: new Date(h.checked_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
-    price: h.price,
-    store: h.store_name,
-    timestamp: new Date(h.checked_at).getTime(),
-  }))
 
   const lowestPrice = history?.length ? Math.min(...history.map(h => h.price)) : item.current_best_price
   const highestPrice = history?.length ? Math.max(...history.map(h => h.price)) : item.current_best_price
@@ -47,11 +43,11 @@ export default async function TrackerItemPage({ params }: { params: Promise<{ id
       {/* Header */}
       <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border">
         <div className="flex items-start gap-4">
-          {item.image_url && <img src={item.image_url} alt={item.product_name} className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />}
+          {item.image_url && <Image src={item.image_url} alt={item.product_name} width={80} height={80} className="object-cover rounded-xl flex-shrink-0" />}
           <div className="flex-1">
             <h1 className="text-xl font-bold mb-1">{item.product_name}</h1>
             <p className="text-sm text-gray-500">
-              {(item.wishlists as any)?.recipients?.name} · {(item.wishlists as any)?.title}
+              {(item as WishlistItemWithWishlist).wishlists?.recipients?.name} · {(item as WishlistItemWithWishlist).wishlists?.title}
             </p>
             <div className="flex items-center gap-4 mt-3">
               <div>
@@ -102,44 +98,12 @@ export default async function TrackerItemPage({ params }: { params: Promise<{ id
       </div>
 
       {/* Price history chart */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border">
+      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
         <h2 className="font-semibold mb-4">Price History</h2>
-        {history && history.length >= 2 ? (
-          <div className="h-64">
-            {/* Simple bar chart with CSS — no Recharts needed for basic view */}
-            <div className="flex items-end gap-1 h-48">
-              {chartData.map((d, i) => {
-                const max = highestPrice ?? 1
-                const height = max > 0 ? (d.price / max) * 100 : 0
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center justify-end group relative" style={{ height: '100%' }}>
-                    <div
-                      className="w-full rounded-t-sm transition-all"
-                      style={{
-                        height: `${height}%`,
-                        backgroundColor: d.price <= (item.target_price ?? Infinity) ? '#22c55e' : '#a855f7',
-                        opacity: 0.8,
-                      }}
-                      title={`${d.date}: €${d.price} @ ${d.store}`}
-                    />
-                    <div className="absolute -bottom-6 text-[10px] text-gray-400 rotate-45 origin-top-left whitespace-nowrap hidden group-hover:block">
-                      {d.date}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex justify-between text-[10px] text-gray-400 mt-7 px-1">
-              <span>{chartData[0]?.date}</span>
-              <span>{chartData[chartData.length - 1]?.date}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-400">
-            <TrendingDown size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Need at least 2 price checks to show history.</p>
-          </div>
-        )}
+        <PriceHistoryChart
+          history={(history as PriceHistoryRow[]) ?? []}
+          targetPrice={item.target_price ? Number(item.target_price) : null}
+        />
       </div>
 
       {/* History table */}

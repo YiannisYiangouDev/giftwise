@@ -1,12 +1,22 @@
 'use client'
-import { Bell, Moon, Sun, Menu } from 'lucide-react'
+import { Bell, Moon, Sun, Menu, Search, Command } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Image from 'next/image'
 
-export default function TopBar() {
+import LanguageSwitcher from '@/components/LanguageSwitcher'
+
+interface TopBarProps {
+  onToggleSidebar: () => void
+}
+
+export default function TopBar({ onToggleSidebar }: TopBarProps) {
   const [dark, setDark] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [userInitial, setUserInitial] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
   const supabase = createClient()
   const router = useRouter()
 
@@ -16,6 +26,17 @@ export default function TopBar() {
       document.documentElement.classList.add('dark')
       setDark(true)
     }
+  }, [])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const meta = user.user_metadata || {}
+        const name = meta.full_name || user.email?.split('@')[0] || ''
+        setUserInitial(name.charAt(0).toUpperCase())
+        setAvatarUrl(meta.avatar_url ?? '')
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -35,32 +56,57 @@ export default function TopBar() {
     setDark(next)
   }
 
-  async function signOut() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
-
   return (
-    <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 flex items-center justify-between gap-3">
-      <button onClick={() => (window as any).__toggleSidebar?.()}
-        className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+    <header className="h-14 bg-white/70 dark:bg-[#0e0e0e]/70 backdrop-blur-xl border-b border-gray-100/40 dark:border-gray-800/20 px-4 sm:px-6 flex items-center justify-between gap-3">
+      <button onClick={onToggleSidebar}
+        aria-label="Toggle Sidebar"
+        className="md:hidden p-2 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/40 text-gray-400 transition-all duration-200">
         <Menu size={18} />
       </button>
-      <div className="flex items-center gap-3 ml-auto">
-        <button onClick={toggleDark} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
-          {dark ? <Sun size={18} /> : <Moon size={18} />}
+
+      {/* ⌘K Quick Search trigger */}
+      <button
+        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { metaKey: true, key: 'k' }))}
+        className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/50 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 transition-all"
+      >
+        <Search size={13} />
+        <span className="hidden lg:inline">Quick search...</span>
+        <kbd className="text-[10px] font-mono text-gray-400 bg-gray-200/50 dark:bg-gray-700 px-1 rounded hidden lg:inline">
+          {typeof navigator !== 'undefined' && navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}K
+        </kbd>
+      </button>
+
+      <div className="flex-1" />
+
+      <div className="flex items-center gap-2">
+        <LanguageSwitcher />
+
+        <button onClick={toggleDark}
+          aria-label="Toggle Theme"
+          className="p-2.5 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/40 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-300">
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
-        <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 relative">
-          <Bell size={18} />
+
+        <button 
+          aria-label="Notifications"
+          className="p-2.5 rounded-xl hover:bg-gray-100/80 dark:hover:bg-gray-800/40 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 relative transition-all duration-300">
+          <Bell size={16} />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-900">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
-        <button onClick={signOut} className="text-sm text-gray-500 hover:text-red-500 transition px-2">
-          Sign out
-        </button>
+
+        <Link href="/profile"
+          className="ml-1 flex items-center justify-center transition-all duration-300"
+          title="My Profile">
+          {avatarUrl ? (
+            <Image src={avatarUrl} alt="User Avatar" width={32} height={32} className="w-8 h-8 rounded-full object-cover ring-2 ring-brand-200/50 dark:ring-brand-700/30 hover:scale-105 transition-transform" />
+          ) : (
+            <div className="avatar-sm avatar-gold hover:ring-brand-400/50 text-[11px]">{userInitial || '?'}</div>
+          )}
+        </Link>
       </div>
     </header>
   )

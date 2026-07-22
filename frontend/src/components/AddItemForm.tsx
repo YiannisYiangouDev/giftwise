@@ -2,9 +2,27 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, Search, Link2, ShoppingBag, ExternalLink } from 'lucide-react'
+import SafeImage from '@/components/SafeImage'
+import { Loader2, Search, Link2, ShoppingBag, ExternalLink, Image as ImageIcon, Upload, Camera, Sparkles } from 'lucide-react'
 import { sanitize, sanitizeOptional } from '@/lib/sanitize'
 import { useToast } from '@/components/Toast'
+
+function generatePresetGiftImage(productName: string): string {
+  const colors = [
+    ['#c5a880', '#533e2d'],
+    ['#8b5cf6', '#4c1d95'],
+    ['#10b981', '#064e3b'],
+    ['#3b82f6', '#1e3a8a'],
+    ['#ec4899', '#831843'],
+  ]
+  const idx = Math.abs(productName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % colors.length
+  const [c1, c2] = colors[idx]
+  const initial = (productName.trim().charAt(0) || 'G').toUpperCase()
+  
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="200" height="200" rx="40" fill="url(#g)"/><circle cx="100" cy="100" r="70" fill="white" fill-opacity="0.12"/><text x="100" y="118" font-family="system-ui, sans-serif" font-size="64" font-weight="bold" fill="white" text-anchor="middle">${initial}</text></svg>`
+  
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
 
 interface ProductResult {
   name: string
@@ -36,12 +54,17 @@ export default function AddItemForm({ wishlistId }: { wishlistId: string }) {
     setFetching(true)
     setError(null)
 
+    // Clean URL if shared text was pasted
+    const match = url.match(/https?:\/\/[^\s"'<>\(\)]+/i)
+    const cleanUrl = match ? match[0] : url.trim()
+    setUrl(cleanUrl)
+
     let productName = ''
     let price: number | null = null
     let imgUrl: string | null = null
 
     try {
-      const res = await fetch(`/api/fetch-product?url=${encodeURIComponent(url)}`)
+      const res = await fetch(`/api/fetch-product?url=${encodeURIComponent(cleanUrl)}`)
       if (res.ok) {
         const data = await res.json()
         productName = data.name || ''
@@ -78,9 +101,9 @@ export default function AddItemForm({ wishlistId }: { wishlistId: string }) {
           name: s.name || s.title || s.label || s,
           price: s.price ? parseFloat(s.price) : null,
           currency: 'EUR',
-          url: s.url || `https://www.skroutz.cy/search?keyphrase=${encodeURIComponent(s.name || s)}`,
+          url: s.url || `https://www.skroutz.${s.store?.toLowerCase()?.includes('gr') ? 'gr' : 'cy'}/search?keyphrase=${encodeURIComponent(s.name || s)}`,
           image: s.image_url || s.image || null,
-          store: s.shop_name || s.shop || 'Skroutz.cy',
+          store: s.store || s.shop_name || s.shop || 'Skroutz.cy',
         }))
         setResults(sr)
       }
@@ -120,9 +143,9 @@ export default function AddItemForm({ wishlistId }: { wishlistId: string }) {
       product_name: sanitize(name),
       product_url: url || null,
       image_url: imageUrl,
-      target_price: targetPrice ? parseFloat(targetPrice) : null,
+      target_price: targetPrice ? Math.min(999999.99, Math.max(0, parseFloat(parseFloat(targetPrice).toFixed(2)))) : null,
       current_best_price: null,
-    } as any)
+    })
 
     if (insertError) {
       setError(insertError.message)
@@ -180,8 +203,11 @@ export default function AddItemForm({ wishlistId }: { wishlistId: string }) {
               {results.map((r, i) => (
                 <button key={i} type="button" onClick={() => pickResult(r)}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-left transition group">
-                  {r.image && <img src={r.image} alt="" className="w-10 h-10 object-cover rounded" />}
-                  {!r.image && <ShoppingBag size={18} className="text-gray-300 flex-shrink-0" />}
+                  {r.image ? (
+                    <SafeImage src={r.image} alt={r.name} width={40} height={40} className="object-cover rounded flex-shrink-0" />
+                  ) : (
+                    <ShoppingBag size={18} className="text-gray-300 flex-shrink-0" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{r.name}</p>
                     <p className="text-xs text-gray-500">
@@ -225,6 +251,69 @@ export default function AddItemForm({ wishlistId }: { wishlistId: string }) {
               placeholder="Target €"
               className="w-28 px-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="url"
+                value={imageUrl || ''}
+                onChange={e => setImageUrl(e.target.value || null)}
+                placeholder="Image URL (or upload photo)"
+                className="w-full pl-9 pr-4 py-2 text-xs border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none text-gray-600 dark:text-gray-300"
+              />
+              <ImageIcon className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
+            </div>
+            
+            <label className="p-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer text-gray-500 hover:text-brand-500 transition flex items-center justify-center flex-shrink-0" title="Upload Photo from Device">
+              <Upload size={14} />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast('Image file must be under 5MB', 'error')
+                    return
+                  }
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    if (typeof reader.result === 'string') {
+                      setImageUrl(reader.result)
+                    }
+                  }
+                  reader.readAsDataURL(file)
+                }}
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!name.trim()) {
+                  toast('Enter a product title first to generate AI gift art.', 'error')
+                  return
+                }
+                const presetImg = generatePresetGiftImage(name)
+                setImageUrl(presetImg)
+                toast('Generated luxury AI gift art image!')
+              }}
+              className="p-2 border border-brand-500/30 bg-brand-50/50 dark:bg-brand-950/20 text-brand-500 hover:bg-brand-100/50 rounded-lg transition flex items-center justify-center flex-shrink-0"
+              title="Generate Luxury AI Gift Art"
+            >
+              <Sparkles size={14} />
+            </button>
+
+            {imageUrl && (
+              <SafeImage
+                src={imageUrl}
+                alt="Image Preview"
+                width={36}
+                height={36}
+                className="object-cover rounded-lg border border-gray-200 dark:border-gray-700 flex-shrink-0"
+              />
+            )}
           </div>
           <button type="submit" disabled={loading}
             className="px-6 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition text-sm font-medium disabled:opacity-50 flex items-center gap-2">

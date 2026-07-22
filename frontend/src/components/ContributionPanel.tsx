@@ -28,18 +28,65 @@ export default function ContributionPanel({ itemId, totalContributed, isGroupGif
   const { toast } = useToast()
 
   useEffect(() => {
-    supabase.from('contributions').select('*').eq('item_id', itemId).order('created_at', { ascending: false })
+    // Fetch initial contributions
+    supabase
+      .from('contributions')
+      .select('*')
+      .eq('item_id', itemId)
+      .order('created_at', { ascending: false })
       .then(({ data }) => setContributions((data as Contribution[]) ?? []))
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel(`realtime_contributions:${itemId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contributions',
+          filter: `item_id=eq.${itemId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newContrib = payload.new as Contribution
+            setContributions(prev => {
+              if (prev.some(c => c.id === newContrib.id)) return prev
+              return [newContrib, ...prev]
+            })
+          } else if (payload.eventType === 'DELETE') {
+            const oldContrib = payload.old as { id: string }
+            setContributions(prev => prev.filter(c => c.id !== oldContrib.id))
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedContrib = payload.new as Contribution
+            setContributions(prev => prev.map(c => c.id === updatedContrib.id ? updatedContrib : c))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [itemId])
 
   async function contribute() {
     if (!amount || parseFloat(amount) <= 0) return
     setLoading(true)
-    await supabase.from('contributions').insert({
+    const { data: insertData } = await supabase.from('contributions').insert({
       item_id: itemId,
       amount: parseFloat(amount),
       message: message || null,
-    } as any)
+    }).select('id').single()
+
+    if (insertData?.id) {
+      fetch('/api/contributions/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributionId: insertData.id }),
+      }).catch(console.error)
+    }
+
     // Refresh
     const { data } = await supabase.from('contributions').select('*').eq('item_id', itemId).order('created_at', { ascending: false })
     setContributions((data as Contribution[]) ?? [])

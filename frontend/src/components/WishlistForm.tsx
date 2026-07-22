@@ -52,9 +52,9 @@ export default function WishlistForm({ initial, wishlistId }: WishlistFormProps)
 
     let result
     if (wishlistId) {
-      result = await supabase.from('wishlists').update(data as any).eq('id', wishlistId)
+      result = await supabase.from('wishlists').update(data).eq('id', wishlistId)
     } else {
-      result = await supabase.from('wishlists').insert(data as any)
+      result = await supabase.from('wishlists').insert(data)
     }
 
     if (result.error) {

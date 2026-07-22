@@ -13,6 +13,7 @@ interface RecipientFormProps {
     notes: string
     budget_min: number
     budget_max: number
+    shipping_address?: string
   } | null
   recipientId?: string
 }
@@ -24,6 +25,7 @@ export default function RecipientForm({ initial, recipientId }: RecipientFormPro
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [budgetMin, setBudgetMin] = useState(initial?.budget_min ?? 0)
   const [budgetMax, setBudgetMax] = useState(initial?.budget_max ?? 100)
+  const [shippingAddress, setShippingAddress] = useState(initial?.shipping_address ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -48,16 +50,17 @@ export default function RecipientForm({ initial, recipientId }: RecipientFormPro
       relationship: sanitizeOptional(relationship),
       birthday: birthday || null,
       notes: sanitizeOptional(notes),
-      budget_min: budgetMin,
-      budget_max: budgetMax,
+      shipping_address: sanitizeOptional(shippingAddress),
+      budget_min: Math.min(2147483647, Math.max(0, Math.round(Number(budgetMin) || 0))),
+      budget_max: Math.min(2147483647, Math.max(0, Math.round(Number(budgetMax) || 0))),
     }
 
     let result
     if (recipientId) {
       const { user_id, ...updateData } = data
-      result = await supabase.from('recipients').update(updateData as any).eq('id', recipientId)
+      result = await supabase.from('recipients').update(updateData).eq('id', recipientId)
     } else {
-      result = await supabase.from('recipients').insert(data as any)
+      result = await supabase.from('recipients').insert(data)
     }
 
     if (result.error) {
@@ -84,7 +87,7 @@ export default function RecipientForm({ initial, recipientId }: RecipientFormPro
         </label>
         <input
           type="text" value={name} onChange={e => setName(e.target.value)} required
-          placeholder="e.g. Maria"
+          placeholder="Recipient name"
           className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none"
         />
       </div>
@@ -132,11 +135,20 @@ export default function RecipientForm({ initial, recipientId }: RecipientFormPro
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">Shipping Address</label>
+        <textarea
+          value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} rows={2}
+          placeholder="For shipping Secret Santa or online gifts..."
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none resize-none text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">Notes</label>
         <textarea
           value={notes} onChange={e => setNotes(e.target.value)} rows={3}
           placeholder="Sizes, preferences, ideas…"
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none resize-none"
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-brand-500 outline-none resize-none text-sm"
         />
       </div>
 

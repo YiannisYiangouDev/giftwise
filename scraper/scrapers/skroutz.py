@@ -9,7 +9,7 @@ class SkroutzScraper:
     API_BASE = "https://api.apify.com/v2"
 
     async def scrape(self, url: str) -> dict | None:
-        token = os.environ["APPIFY_API_TOKEN"]
+        token = os.environ["APIFY_API_TOKEN"]
         async with httpx.AsyncClient(timeout=60, headers={"User-Agent": USER_AGENT}) as client:
             # Start actor run
             run_res = await client.post(

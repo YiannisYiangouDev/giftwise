@@ -13,9 +13,29 @@ export default function ItemStatusButton({ itemId, currentStatus }: {
 
   async function setStatus(status: string) {
     setLoading(true)
-    await supabase.from('wishlist_items').update({ status } as any).eq('id', itemId)
-    router.refresh()
-    setLoading(false)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const updateData: any = { status }
+      
+      if (status === 'claimed' || status === 'purchased') {
+        if (user) {
+          updateData.claimed_by = user.id
+          updateData.claimed_by_name = user.user_metadata?.full_name || user.email?.split('@')[0]
+        }
+        updateData.claimed_at = new Date().toISOString()
+      } else if (status === 'wanted') {
+        updateData.claimed_by = null
+        updateData.claimed_by_name = null
+        updateData.claimed_at = null
+      }
+
+      await supabase.from('wishlist_items').update(updateData).eq('id', itemId)
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (currentStatus === 'purchased' || currentStatus === 'received') return null

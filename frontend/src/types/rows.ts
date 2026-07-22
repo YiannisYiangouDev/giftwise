@@ -9,6 +9,7 @@ export interface RecipientRow {
   notes: string | null
   budget_min: number
   budget_max: number
+  budget_target?: number | null
   created_at: string
 }
 
@@ -34,6 +35,7 @@ export interface WishlistItemRow {
   currency: string
   status: 'wanted' | 'claimed' | 'purchased' | 'received'
   claimed_by: string | null
+  claimed_by_name: string | null
   claimed_at: string | null
   notes: string | null
   created_at: string
@@ -87,4 +89,32 @@ export interface SecretSantaParticipantRow {
   assigned_to_user_id: string | null
   wishlist_url: string | null
   created_at: string
+}
+
+// ── Joined / nested result types (for Supabase nested selects) ──
+
+export interface RecipientWithCount {
+  id: string; name: string; user_id: string
+  count?: number; names?: string[]
+}
+
+export interface WishlistWithRecipient extends WishlistRow {
+  recipients: Pick<RecipientRow, 'name' | 'relationship' | 'birthday' | 'notes' | 'budget_min' | 'budget_max'> | null
+}
+
+export interface WishlistItemWithWishlist extends WishlistItemRow {
+  wishlists: (WishlistRow & { recipients: Pick<RecipientRow, 'name'> | null }) | null
+  is_group_gift?: boolean
+}
+
+export interface ContributionWithNested extends ContributionRow {
+  wishlist_items: Pick<WishlistItemRow, 'product_name'> & {
+    wishlists: (Pick<WishlistRow, 'title'> & {
+      recipients: Pick<RecipientRow, 'name'> | null
+    }) | null
+  } | null
+}
+
+export interface WishlistWithCalendarRecipient extends WishlistRow {
+  recipients: Pick<RecipientRow, 'name'> | null
 }
