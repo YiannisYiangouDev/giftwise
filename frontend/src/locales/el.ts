@@ -114,4 +114,20 @@ export const el: Record<TranslationKeys, string> = {
   monthly_target: 'Μηνιαίος Στόχος Αποταμίευσης',
   add_savings_goal: 'Νέος Στόχος Αποταμίευσης',
   add_deposit: 'Κατάθεση Στον Κουμπαρά',
+
+  // Name Days Directory
+  nd_directory_title: 'Ευρετήριο Ελληνικών & Διεθνών Ονομαστικών Εορτών',
+  nd_directory_subtitle: 'Αναζητήστε και δείτε τις γιορτές των αγίων για να τις αντιστοιχίσετε με τους αγαπημένους σας',
+  nd_search_placeholder: 'Αναζήτηση με όνομα, ελληνική γραφή ή ημερομηνία...',
+  nd_tab_all: 'Όλες οι Γιορτές',
+  nd_tab_today: 'Σήμερα',
+  nd_tab_matched: 'Αντιστοιχισμένοι Αποδέκτες',
+  nd_month_all: 'Όλοι',
+  nd_unassigned: 'Μη ανατεθειμένο',
+  nd_for: 'Για',
+  nd_no_results: 'Δεν βρέθηκαν αντίστοιχες ονομαστικές γιορτές.',
+  nd_showing: 'Εμφάνιση',
+  nd_to: 'έως',
+  nd_of: 'από',
+  nd_entries: 'εγγραφές',
 }

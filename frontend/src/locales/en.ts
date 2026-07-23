@@ -112,6 +112,22 @@ export const en = {
   monthly_target: 'Monthly Savings Target',
   add_savings_goal: 'New Savings Goal',
   add_deposit: 'Log Deposit',
+
+  // Name Days Directory
+  nd_directory_title: 'Greek & International Name Days Directory (Εορτολόγιο)',
+  nd_directory_subtitle: 'Search and browse saint feast days to match with your loved ones',
+  nd_search_placeholder: 'Search by name, Greek spelling, or date...',
+  nd_tab_all: 'All Occasions',
+  nd_tab_today: 'Today',
+  nd_tab_matched: 'Matched Recipients',
+  nd_month_all: 'All',
+  nd_unassigned: 'Unassigned',
+  nd_for: 'For',
+  nd_no_results: 'No matching name day occasions found.',
+  nd_showing: 'Showing',
+  nd_to: 'to',
+  nd_of: 'of',
+  nd_entries: 'entries',
 }
 
 export type TranslationKeys = keyof typeof en
