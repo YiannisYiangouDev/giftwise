@@ -76,6 +76,22 @@ export const GREEK_NAMEDAYS: NameDayEntry[] = [
   { name: 'Emmanuel', greekName: 'Εμμανουήλ', date: '12-25', description: 'Nativity of Christ (Χριστούγεννα)' },
   { name: 'Stefanos', greekName: 'Στέφανος / Στεφανία', date: '12-27', description: 'St. Stephen (Αγίου Στεφάνου)' },
   { name: 'Stephen', greekName: 'Στέφανος', date: '12-27', description: 'St. Stephen (Αγίου Στεφάνου)' },
+  { name: 'Mary', greekName: 'Μαρία', date: '08-15', description: 'Dormition of the Virgin Mary (Κοίμηση της Θεοτόκου)' },
+  { name: 'Anna', greekName: 'Άννα', date: '12-09', description: 'St. Anne (Αγίας Άννης)' },
+  { name: 'Anne', greekName: 'Άννα', date: '12-09', description: 'St. Anne (Αγίας Άννης)' },
+  { name: 'Christopher', greekName: 'Χριστόφορος', date: '05-09', description: 'St. Christopher (Αγίου Χριστοφόρου)' },
+  { name: 'Chris', greekName: 'Χριστόφορος / Χριστίνα', date: '05-09', description: 'St. Christopher / St. Christina' },
+  { name: 'Thomas', greekName: 'Θωμάς', date: '10-06', description: 'Apostle Thomas (Αποστόλου Θωμά)' },
+  { name: 'Tom', greekName: 'Θωμάς', date: '10-06', description: 'Apostle Thomas (Αποστόλου Θωμά)' },
+  { name: 'Joseph', greekName: 'Ιωσήφ', date: '12-18', description: 'St. Joseph the Betrothed (Αγίου Ιωσήφ του Μνήστορος)' },
+  { name: 'Joe', greekName: 'Ιωσήφ', date: '12-18', description: 'St. Joseph (Αγίου Ιωσήφ)' },
+  { name: 'Daniel', greekName: 'Δανιήλ', date: '12-17', description: 'Prophet Daniel (Προφήτου Δανιήλ)' },
+  { name: 'Elizabeth', greekName: 'Ελισάβετ', date: '09-05', description: 'St. Elizabeth (Αγίας Ελισάβετ)' },
+  { name: 'Luke', greekName: 'Λουκάς', date: '10-18', description: 'Apostle & Evangelist Luke (Αποστόλου & Ευαγγελιστού Λουκά)' },
+  { name: 'Mark', greekName: 'Μάρκος', date: '04-25', description: 'Apostle & Evangelist Mark (Αποστόλου & Ευαγγελιστού Μάρκου)' },
+  { name: 'Matthew', greekName: 'Ματθαίος', date: '11-16', description: 'Apostle & Evangelist Matthew (Αποστόλου & Ευαγγελιστού Ματθαίου)' },
+  { name: 'Sarah', greekName: 'Σάρρα', date: '12-18', description: 'Feast of Righteous Sarah (Δικαίας Σάρρας)' },
+  { name: 'Rachel', greekName: 'Ραχήλ', date: '12-18', description: 'Feast of Righteous Rachel (Δικαίας Ραχήλ)' },
 ]
 
 export function matchNameDay(recipientName: string): NameDayEntry | null {

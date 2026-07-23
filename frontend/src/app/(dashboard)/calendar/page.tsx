@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Calendar as CalendarIcon, Gift, Cake, Sparkles, Bell, Download, ExternalLink, User, Heart } from 'lucide-react'
 import { GREEK_NAMEDAYS, matchNameDay, NameDayEntry } from '@/lib/namedays'
 import type { RecipientRow, WishlistRow } from '@/types/rows'
+import NameDaysDirectory from '@/components/NameDaysDirectory'
 
 export default async function CalendarPage() {
   const supabase = await createClient()
@@ -253,27 +254,8 @@ export default async function CalendarPage() {
         )}
       </div>
 
-      {/* Greek Name Days Directory Section */}
-      <div className="card p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-bold text-lg text-gray-900 dark:text-white">Greek & International Name Days Directory (Εορτολόγιο)</h2>
-            <p className="text-xs text-gray-400">Browse major feast days matched with your recipient list</p>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {GREEK_NAMEDAYS.slice(0, 12).map((nd, idx) => (
-            <div key={idx} className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 space-y-1">
-              <div className="flex items-center justify-between text-xs font-semibold text-gray-900 dark:text-gray-200">
-                <span>{nd.name}</span>
-                <span className="text-brand-500 font-mono">{nd.date}</span>
-              </div>
-              <p className="text-[11px] text-gray-400 truncate">{nd.greekName}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Greek & International Name Days Directory Section */}
+      <NameDaysDirectory recipients={recipients ?? []} />
     </div>
   )
 }
