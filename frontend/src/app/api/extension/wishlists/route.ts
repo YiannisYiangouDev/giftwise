@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
   })
 
   if (error) {
+    console.error('Error fetching wishlists for extension:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

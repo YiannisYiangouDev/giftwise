@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
   })
 
   if (error) {
+    console.error('Error clipping item for extension:', error)
     if (error.message.includes('Invalid token')) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
