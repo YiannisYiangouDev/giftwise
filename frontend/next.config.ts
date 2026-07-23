@@ -6,7 +6,7 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'same-origin' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.supabase.co https://*.skroutz.cy https://*.skroutz.gr; frame-ancestors 'none'" },
+  { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.supabase.co https://*.skroutz.cy https://*.skroutz.gr; frame-ancestors 'none'" },
   { key: 'X-Powered-By', value: '' },
 ]
 
