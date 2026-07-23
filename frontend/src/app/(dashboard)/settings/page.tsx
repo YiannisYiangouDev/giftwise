@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { listTokensAction, generateTokenAction, revokeTokenAction } from '@/app/actions/tokenActions'
+import { ApiTokenRow } from '@/types/rows'
 
 export default function SettingsPage() {
   const { t } = useLanguage()
@@ -18,7 +19,7 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [tokens, setTokens] = useState<{ id: string; name: string; last_used_at: string | null; created_at: string }[]>([])
+  const [tokens, setTokens] = useState<Pick<ApiTokenRow, 'id' | 'name' | 'last_used_at' | 'created_at'>[]>([])
   const [newTokenName, setNewTokenName] = useState('')
   const [showTokenModal, setShowTokenModal] = useState(false)
   const [generatedToken, setGeneratedToken] = useState('')

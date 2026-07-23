@@ -118,3 +118,13 @@ export interface ContributionWithNested extends ContributionRow {
 export interface WishlistWithCalendarRecipient extends WishlistRow {
   recipients: Pick<RecipientRow, 'name'> | null
 }
+
+export interface ApiTokenRow {
+  id: string
+  user_id: string
+  token_hash: string
+  name: string
+  last_used_at: string | null
+  created_at: string
+}
+
